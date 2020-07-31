@@ -14,7 +14,6 @@ services:
     networks:
       - saleor-backend-tier
     depends_on:
-      - db
       - redis
       - jaeger
     volumes:
@@ -23,13 +22,13 @@ services:
       - ./saleor/tests/:/app/tests
       # shared volume between worker and api for media
       - saleor-media:/app/media
-    env_file: dev.env
+    env_file: prod.env
     command: python manage.py runserver 0.0.0.0:8000
 
   storefront:
     build:
       context: ./saleor-storefront
-      dockerfile: ./Dockerfile.dev
+      dockerfile: ./Dockerfile
     image: celldev-storefront:dev
     ports:
       - 3000:3000
@@ -37,12 +36,12 @@ services:
     volumes:
       - ./saleor-storefront/:/app:cached
       - /app/node_modules/
-    command: npm start -- --host 0.0.0.0
+    command: npm run build
 
   dashboard:
     build:
       context: ./saleor-dashboard
-      dockerfile: ./Dockerfile.dev
+      dockerfile: ./Dockerfile
     image: celldev-dashboard:dev
     ports:
       - 9000:9000
@@ -50,18 +49,7 @@ services:
     volumes:
       - ./saleor-dashboard/:/app:cached
       - /app/node_modules/
-    command: npm start -- --host 0.0.0.0
-
-  db:
-    image: library/postgres:11.1-alpine
-    ports:
-      - 5432:5432
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-    volumes:
-      - saleor-db:/var/lib/postgresql
-    env_file: dev.env
+    command: npm run build
 
   redis:
     image: library/redis:5.0-alpine
@@ -79,21 +67,17 @@ services:
       dockerfile: ./Dockerfile
       args:
         STATIC_URL: '/static/'
-    image: celldev-worker:dev
     restart: unless-stopped
     networks:
       - saleor-backend-tier
     depends_on:
       - redis
-      - mailhog
     volumes:
       - ./saleor/saleor/:/app/saleor:Z,cached
       - ./saleor/templates/:/app/templates:Z,cached
       # shared volume between worker and api for media
       - saleor-media:/app/media
-    env_file: dev.env
-    environment:
-      - EMAIL_URL=smtp://mailhog:1025
+    env_file: prod.env
     command: celery -A saleor worker --app=saleor.celeryconf:app --loglevel=info
 
   jaeger:
@@ -110,18 +94,7 @@ services:
     networks:
       - saleor-backend-tier
 
-  mailhog:
-    image: mailhog/mailhog
-    ports: 
-      - 1025:1025 # smtp server
-      - 8025:8025 # web ui. Visit http://localhost:8025/ to check emails
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-
 volumes:
-  saleor-db:
-    driver: local
   saleor-redis:
     driver: local
   saleor-media:

@@ -4,57 +4,58 @@ services:
   api:
     build:
       context: ./saleor
-      dockerfile: ./Dockerfile
+      dockerfile: ./Dockerfile.prod
       args:
         STATIC_URL: '/static/'
     image: celldev-api:dev
-    ports:
-      - 8000:8000
+    expose:
+      - 80
     restart: unless-stopped
+    environment:
+      VIRTUAL_HOST: api.a6design.net
+      VIRTUAL_PORT: 8000
     networks:
       - saleor-backend-tier
+      - my-proxy-net
     depends_on:
       - redis
       - jaeger
     volumes:
-      - ./saleor/saleor/:/app/saleor:Z
-      - ./saleor/templates/:/app/templates:Z
-      - ./saleor/tests/:/app/tests
       # shared volume between worker and api for media
       - saleor-media:/app/media
     env_file: prod.env
-    command: python manage.py runserver 0.0.0.0:8000
-
+  
   storefront:
     build:
       context: ./saleor-storefront
       dockerfile: ./Dockerfile
     image: celldev-storefront:dev
-    ports:
-      - 3000:3000
+    expose:
+      - 80
     restart: unless-stopped
-    volumes:
-      - ./saleor-storefront/:/app:cached
-      - /app/node_modules/
-    command: npm run build
+    environment:
+      VIRTUAL_HOST: cell.a6design.net
+    networks:
+      - my-proxy-net
 
   dashboard:
     build:
       context: ./saleor-dashboard
       dockerfile: ./Dockerfile
     image: celldev-dashboard:dev
-    ports:
-      - 9000:9000
+    expose:
+      - 80
     restart: unless-stopped
-    volumes:
-      - ./saleor-dashboard/:/app:cached
-      - /app/node_modules/
-    command: npm run build
+    environment:
+      VIRTUAL_HOST: dashboard.a6design.net
+    networks:
+      - my-proxy-net
 
   redis:
     image: library/redis:5.0-alpine
-    ports:
-      - 6379:6379
+    expose:
+      - 6379
+    working_dir: /data
     restart: unless-stopped
     networks:
       - saleor-backend-tier
@@ -73,8 +74,6 @@ services:
     depends_on:
       - redis
     volumes:
-      - ./saleor/saleor/:/app/saleor:Z,cached
-      - ./saleor/templates/:/app/templates:Z,cached
       # shared volume between worker and api for media
       - saleor-media:/app/media
     env_file: prod.env
@@ -83,13 +82,14 @@ services:
   jaeger:
     image: jaegertracing/all-in-one
     ports:
-      - "5775:5775/udp"
-      - "6831:6831/udp"
-      - "6832:6832/udp"
-      - "5778:5778"
       - "16686:16686"
-      - "14268:14268"
-      - "9411:9411"
+    expose:
+      - 5775/udp
+      - 6831/udp
+      - 6832/udp
+      - 5778
+      - 14268
+      - 9411
     restart: unless-stopped
     networks:
       - saleor-backend-tier
@@ -102,3 +102,6 @@ volumes:
 networks:
   saleor-backend-tier:
     driver: bridge
+  my-proxy-net:
+    external:
+      name: mynetwork

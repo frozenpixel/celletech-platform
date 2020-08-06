@@ -1,0 +1,25 @@
+version: '3.8'
+
+volumes:
+  conf:
+  vhost:
+  html:
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    volumes:
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    ports:
+      - "80:80"
+    restart: always
+    networks:
+      - proxynet
+
+networks:
+  proxynet:
+    name: mynetwork

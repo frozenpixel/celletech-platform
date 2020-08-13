@@ -13,6 +13,7 @@ services:
     restart: unless-stopped
     environment:
       VIRTUAL_HOST: api.a6design.net
+      VIRTUAL_PROTO: uwsgi
       VIRTUAL_PORT: 8000
     networks:
       - saleor-backend-tier

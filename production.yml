@@ -10,7 +10,7 @@ services:
     image: celldev-api:dev
     expose:
       - 80
-      - 433
+      - 443
     restart: unless-stopped
     environment:
       VIRTUAL_HOST: api.a6design.net
@@ -34,9 +34,12 @@ services:
     image: celldev-storefront:dev
     expose:
       - 80
+      - 443
     restart: unless-stopped
     environment:
       VIRTUAL_HOST: cell.a6design.net
+      LETSENCRYPT_HOST: cell.a6design.net
+      VIRTUAL_PORT: 443
     networks:
       - my-proxy-net
 
@@ -47,9 +50,12 @@ services:
     image: celldev-dashboard:dev
     expose:
       - 80
+      - 443
     restart: unless-stopped
     environment:
       VIRTUAL_HOST: dashboard.a6design.net
+      LETSENCRYPT_HOST: dashboard.a6design.net
+      VIRTUAL_PORT: 443
     networks:
       - my-proxy-net
 

@@ -45,7 +45,7 @@ services:
     build:
       context: ./saleor-dashboard
       dockerfile: ./Dockerfile.dev
-    image: celldev-dashboard:dev
+    image: celletech-dashboard:dev
     container_name: cell_dashboard_dev
     ports:
       - 9000:9000

@@ -1,0 +1,124 @@
+version: '2'
+
+services:
+  api:
+    build:
+      context: ./saleor
+      dockerfile: ./Dockerfile
+      args:
+        STATIC_URL: '/static/'
+    image: celletech-api:dev
+    container_name: cell_api_dev
+    ports:
+      - 8000:8000
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+    depends_on:
+      - redis
+      - jaeger
+    volumes:
+      - ./saleor/saleor/:/app/saleor:Z
+      - ./saleor/templates/:/app/templates:Z
+      - ./saleor/tests/:/app/tests
+      # shared volume between worker and api for media
+      - saleor-media:/app/media
+    env_file: dev.env
+    command: python manage.py runserver 0.0.0.0:8000
+
+  storefront:
+    build:
+      context: ./saleor-storefront
+      dockerfile: ./Dockerfile.dev
+    image: celletech-storefront:dev
+    container_name: cell_storefront_dev
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    volumes:
+      - ./saleor-storefront/:/app:cached
+      - /app/node_modules/
+    command: npm start -- --host 0.0.0.0
+
+  dashboard:
+    build:
+      context: ./saleor-dashboard
+      dockerfile: ./Dockerfile.dev
+    image: celletech-dashboard:dev
+    container_name: cell_dashboard_dev
+    ports:
+      - 9000:9000
+    restart: unless-stopped
+    volumes:
+      - ./saleor-dashboard/:/app:cached
+      - /app/node_modules/
+    command: npm start -- --host 0.0.0.0
+
+  redis:
+    image: library/redis:5.0-alpine
+    container_name: cell_redis_dev
+    ports:
+      - 6379:6379
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+    volumes:
+      - saleor-redis:/data
+
+  worker:
+    build:
+      context: ./saleor
+      dockerfile: ./Dockerfile
+      args:
+        STATIC_URL: '/static/'
+    image: celletech-worker:dev
+    container_name: cell_worker_dev
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+    depends_on:
+      - redis
+      - mailhog
+    volumes:
+      - ./saleor/saleor/:/app/saleor:Z,cached
+      - ./saleor/templates/:/app/templates:Z,cached
+      # shared volume between worker and api for media
+      - saleor-media:/app/media
+    env_file: dev.env
+    environment:
+      - EMAIL_URL=smtp://mailhog:1025
+    command: celery -A saleor worker --app=saleor.celeryconf:app --loglevel=info
+
+  jaeger:
+    image: jaegertracing/all-in-one
+    container_name: cell_jaeger_dev
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: cell_mailhog_dev
+    ports:
+      - 1025:1025 # smtp server
+      - 8025:8025 # web ui. Visit http://localhost:8025/ to check emails
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+
+volumes:
+  saleor-redis:
+    driver: local
+  saleor-media:
+
+networks:
+  saleor-backend-tier:
+    driver: bridge

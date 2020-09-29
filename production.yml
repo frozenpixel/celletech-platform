@@ -2,12 +2,8 @@ version: '2'
 
 services:
   api:
-    build:
-      context: ./saleor
-      dockerfile: ./Dockerfile.prod
-      args:
-        STATIC_URL: '/static/'
-    image: celldev-api:dev
+    image: frozenpixel/celletech-api:dev
+    container_name: celletech_api_prod
     expose:
       - 80
       - 443
@@ -21,17 +17,14 @@ services:
       - my-proxy-net
     depends_on:
       - redis
-      - jaeger
     volumes:
       # shared volume between worker and api for media
       - saleor-media:/app/media
     env_file: prod.env
   
   storefront:
-    build:
-      context: ./saleor-storefront
-      dockerfile: ./Dockerfile
-    image: celldev-storefront:dev
+    image: frozenpixel/celletech-storefront:dev
+    container_name: celletech_storefront_prod
     expose:
       - 80
       - 443
@@ -44,10 +37,8 @@ services:
       - my-proxy-net
 
   dashboard:
-    build:
-      context: ./saleor-dashboard
-      dockerfile: ./Dockerfile
-    image: celldev-dashboard:dev
+    image: frozenpixel/celletech-dashboard:dev
+    container_name: celletech_dashboard_prod
     expose:
       - 80
       - 443
@@ -71,11 +62,8 @@ services:
       - saleor-redis:/data
 
   worker:
-    build:
-      context: ./saleor
-      dockerfile: ./Dockerfile
-      args:
-        STATIC_URL: '/static/'
+    image: frozenpixel/celletech-api:dev
+    container_name: celletech_worker_prod
     restart: unless-stopped
     networks:
       - saleor-backend-tier
@@ -86,21 +74,6 @@ services:
       - saleor-media:/app/media
     env_file: prod.env
     command: celery -A saleor worker --app=saleor.celeryconf:app --loglevel=info
-
-  jaeger:
-    image: jaegertracing/all-in-one
-    ports:
-      - "16686:16686"
-    expose:
-      - 5775/udp
-      - 6831/udp
-      - 6832/udp
-      - 5778
-      - 14268
-      - 9411
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
 
 volumes:
   saleor-redis:
